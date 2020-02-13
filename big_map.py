@@ -3,6 +3,8 @@ import sys
 import pygame
 import requests
 
+z = 1
+
 
 def update():
     map_request = f"http://static-maps.yandex.ru/1.x/"
@@ -42,10 +44,23 @@ while running:
             running = False
 
         if event.type == pygame.KEYDOWN:
-            # следующий код
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_PAGEUP]:
+                delta_x *= 2
+                delta_y *= 2
+                if delta_y > 100 or delta_x > 100:
+                    delta_y = 0.001953125
+                    delta_x = 0.001953125
+            if keys[pygame.K_PAGEDOWN]:
+                delta_x /= 2
+                delta_y /= 2
+                if delta_y < 0.001953125 or delta_x < 0.001953125:
+                    delta_y = 90
+                    delta_x = 90
+            print(delta_x, delta_y)
             update()
             screen.blit(pygame.image.load('map.png'), (0, 0))
-            
+
     pygame.display.flip()
 pygame.quit()
 os.remove('map.png')
