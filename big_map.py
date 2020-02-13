@@ -162,6 +162,7 @@ while running:
             if map:
                 update(x, y)
                 screen.blit(pygame.image.load('map.png'), (0, 0))
+
     pygame.draw.rect(screen, (255, 255, 255), ((0, 420), (300, 30)))
     font = pygame.font.Font(None, 20)
     text = font.render(str(address), 1, (0, 0, 0))
