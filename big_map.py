@@ -3,7 +3,7 @@ import sys
 import pygame
 import requests
 
-Z = 0.003
+Z = 0.03
 l = "map"
 pygame.init()
 screen = pygame.display.set_mode((600, 450))
@@ -85,13 +85,13 @@ class chouse_bar:
         screen.blit(self.image, (0, 0))
 
 
-def update(x, y):
+def update():
     map_request = f"http://static-maps.yandex.ru/1.x/"
     map_params = {
         'll': ','.join([str(x), str(y)]),
         'spn': ','.join([str(delta_x), str(delta_y)]),
         'l': l,
-        'pt': ','.join([str(x), str(y)]) + ',pm2blm'
+        'pt': ','.join([str(pt_x), str(pt_y)]) + ',pm2blm'
     }
 
     map_response = requests.get(map_request, params=map_params)
@@ -108,7 +108,7 @@ def update(x, y):
         file.write(map_response.content)
 
 
-x = y = delta_x = delta_y = 0
+x = y = delta_x = delta_y = pt_x = pt_y = 0
 address = ''
 screen.fill((0, 0, 0))
 bar = chouse_bar()
@@ -122,7 +122,7 @@ while running:
             map_r = bar.check(pygame.mouse.get_pos())
             if map_r:
                 l = map_r
-            update(x, y)
+            update()
             screen.blit(pygame.image.load('map.png'), (0, 0))
         if event.type == pygame.KEYDOWN:
             keys = pygame.key.get_pressed()
@@ -152,15 +152,16 @@ while running:
                 if search:
                     map = True
                     x, y = search
+                    pt_x, pt_y = search
                     delta_x, delta_y = set_spn(address)
-                    update(x, y)
+                    update()
                     screen.blit(pygame.image.load('map.png'), (0, 0))
             elif keys[pygame.K_BACKSPACE]:
                 address = address[:-1]
             elif len(address) < 50:
                 address += event.unicode
             if map:
-                update(x, y)
+                update()
                 screen.blit(pygame.image.load('map.png'), (0, 0))
 
     pygame.draw.rect(screen, (255, 255, 255), ((0, 420), (300, 30)))
