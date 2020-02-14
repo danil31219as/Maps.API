@@ -2,11 +2,38 @@ import os
 import sys
 import pygame
 import requests
+import math
 
 Z = 0.03
 l = "map"
 pygame.init()
 screen = pygame.display.set_mode((600, 450))
+
+
+def lonlat_distance(a, b):
+    degree_to_meters_factor = 111 * 1000
+    a_lon, a_lat = list(map(float, a))
+    b_lon, b_lat = list(map(float, b))
+    radians_lattitude = math.radians((a_lat + b_lat) / 2.)
+    lat_lon_factor = math.cos(radians_lattitude)
+    dx = abs(a_lon - b_lon) * degree_to_meters_factor * lat_lon_factor
+    dy = abs(a_lat - b_lat) * degree_to_meters_factor
+    distance = math.sqrt(dx * dx + dy * dy)
+    return distance
+
+
+def search_object(a, b):
+    a, b = map(str, [a, b])
+    geocoder_request = f"""http://geocode-maps.yandex.ru/1.x/"""
+    geocoder_params = {
+        'apikey': '40d1649f-0493-4b70-98ba-98533de7710b',
+        'geocode': ','.join([a, b]),
+        'format': 'json'
+    }
+    response = requests.get(geocoder_request, params=geocoder_params)
+    return \
+        response.json()["response"]["GeoObjectCollection"]["featureMember"][0][
+            "GeoObject"]["metaDataProperty"]["GeocoderMetaData"]["text"]
 
 
 def get_name(address):
@@ -49,7 +76,6 @@ def get_index(address):
 
 def set_spn(toponym_to_find):
     geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
-
     geocoder_params = {
         "apikey": "40d1649f-0493-4b70-98ba-98533de7710b",
         "geocode": toponym_to_find,
@@ -65,6 +91,24 @@ def set_spn(toponym_to_find):
     x2, y2 = float(toponym_s["upperCorner"].split()[0]), float(
         toponym_s["upperCorner"].split()[1])
     return abs(x2 - x1), abs(y2 - y1)
+
+
+def search_organiz(a, b, text):
+    a, b = map(str, [a, b])
+    search_api_server = "https://search-maps.yandex.ru/v1/"
+    apikey_search = "dda3ddba-c9ea-4ead-9010-f43fbc15c6e3"
+    search_params = {
+        "apikey": apikey_search,
+        "text": text,
+        "lang": "ru_RU",
+        'll': ','.join([a, b]),
+        "type": "biz"
+    }
+    response_org = requests.get(search_api_server, params=search_params).json()
+    organization = response_org["features"][0]
+    point = organization["geometry"]["coordinates"]
+    if lonlat_distance(point, (a, b)) <= 50000:
+        return point, organization['properties']['description'], organization['properties']['name']
 
 
 def get_coor(address):
@@ -185,7 +229,7 @@ class ChooseIndex:
         screen.blit(self.image, (self.x, self.y))
 
 
-x = y = delta_x = delta_y = pt_x = pt_y = 0
+x = y = delta_x = delta_y = pt_x = pt_y = x0 = y0 = 0
 address = ''
 pt_x, pt_y = "", ""
 data = ""
@@ -204,16 +248,34 @@ while running:
             running = False
         if event.type == pygame.MOUSEBUTTONDOWN:
             map_r = bar.check(pygame.mouse.get_pos())
+            check_clear = clear_btn.check(pygame.mouse.get_pos())
+            postal_r = postal_index.check(pygame.mouse.get_pos())
             if map_r:
                 l = map_r
-            check_clear = clear_btn.check(pygame.mouse.get_pos())
-            if check_clear:
+            elif check_clear:
                 pt_y, pt_x = "", ""
                 data = ""
-                p_i = " "
-            postal_r = postal_index.check(pygame.mouse.get_pos())
-            if postal_r:
+                p_i = ""
+            elif postal_r:
                 postal_bool = True if postal_bool == False else False
+            else:
+                if event.button == 1:
+                    x0 = x - delta_x * 2 / 600 * 300
+                    y0 = y + delta_y * 2 / 450 * 225
+                    pt_x = pygame.mouse.get_pos()[0] * delta_x * 2 / 600 + x0
+                    pt_y = y0 - (pygame.mouse.get_pos()[1] * delta_y * 2 / 450)
+                    address = search_object(pt_x, pt_y)
+                    p_i = get_index(address)
+                    data = get_name(address)
+                elif event.button == 3:
+                    x0 = x - delta_x * 2 / 600 * 300
+                    y0 = y + delta_y * 2 / 450 * 225
+                    pt_x = pygame.mouse.get_pos()[0] * delta_x * 2 / 600 + x0
+                    pt_y = y0 - (pygame.mouse.get_pos()[1] * delta_y * 2 / 450)
+                    tmp, address, name = search_organiz(pt_x, pt_y, address)
+                    pt_x, pt_y = tmp
+                    p_i = get_index(address)
+                    data = name
             update()
             screen.blit(pygame.image.load('map.png'), (0, 0))
         if event.type == pygame.KEYDOWN:
