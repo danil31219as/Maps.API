@@ -60,6 +60,21 @@ def load_image(name, colorkey=None):
     return image
 
 
+class clear_search:
+    def __init__(self):
+        self.x = 0
+        self.y = 0
+        self.image = load_image("clear_search_btn.png")
+
+    def check(self, coor):
+        if coor[1] > 419 and coor[1] < 451 and coor[0] > 569 and coor[1] < 601:
+            return True
+        return False
+
+    def draw(self):
+        screen.blit(self.image, (570, 420))
+
+
 class chouse_bar:
     def __init__(self):
         self.x = 0
@@ -91,7 +106,7 @@ def update():
         'll': ','.join([str(x), str(y)]),
         'spn': ','.join([str(delta_x), str(delta_y)]),
         'l': l,
-        'pt': ','.join([str(pt_x), str(pt_y)]) + ',pm2blm'
+        'pt': "" if pt_x == "" and pt_y == "" else ','.join([str(pt_x), str(pt_y)]) + ',pm2blm'
     }
 
     map_response = requests.get(map_request, params=map_params)
@@ -110,10 +125,13 @@ def update():
 
 x = y = delta_x = delta_y = pt_x = pt_y = 0
 address = ''
+pt_x, pt_y = "", ""
 screen.fill((0, 0, 0))
 bar = chouse_bar()
-map = False
+clear_btn = clear_search()
 running = True
+update()
+screen.blit(pygame.image.load('map.png'), (0, 0))
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -122,6 +140,9 @@ while running:
             map_r = bar.check(pygame.mouse.get_pos())
             if map_r:
                 l = map_r
+            check_clear = clear_btn.check(pygame.mouse.get_pos())
+            if check_clear:
+                pt_y, pt_x = "", ""
             update()
             screen.blit(pygame.image.load('map.png'), (0, 0))
         if event.type == pygame.KEYDOWN:
@@ -150,7 +171,6 @@ while running:
             if keys[13]:
                 search = get_coor(address)
                 if search:
-                    map = True
                     x, y = search
                     pt_x, pt_y = search
                     delta_x, delta_y = set_spn(address)
@@ -160,15 +180,14 @@ while running:
                 address = address[:-1]
             elif len(address) < 50:
                 address += event.unicode
-            if map:
-                update()
-                screen.blit(pygame.image.load('map.png'), (0, 0))
-
+            update()
+            screen.blit(pygame.image.load('map.png'), (0, 0))
     pygame.draw.rect(screen, (255, 255, 255), ((0, 420), (300, 30)))
     font = pygame.font.Font(None, 20)
     text = font.render(str(address), 1, (0, 0, 0))
     screen.blit(text, (0, 430))
     bar.draw()
+    clear_btn.draw()
     pygame.display.flip()
 pygame.quit()
 os.remove('map.png')
