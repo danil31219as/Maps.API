@@ -9,6 +9,20 @@ pygame.init()
 screen = pygame.display.set_mode((600, 450))
 
 
+def get_name(address):
+    geocoder_request = f"""http://geocode-maps.yandex.ru/1.x/"""
+    geocoder_params = {
+        'apikey': '40d1649f-0493-4b70-98ba-98533de7710b',
+        'geocode': address,
+        'format': 'json'
+    }
+    response = requests.get(geocoder_request, params=geocoder_params)
+    if response:
+        json_response = response.json()
+        return json_response['response']['GeoObjectCollection']['featureMember'][0]['GeoObject'][
+            'metaDataProperty']['GeocoderMetaData']['text']
+
+
 def set_spn(toponym_to_find):
     geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
 
@@ -126,6 +140,7 @@ def update():
 x = y = delta_x = delta_y = pt_x = pt_y = 0
 address = ''
 pt_x, pt_y = "", ""
+data = ""
 screen.fill((0, 0, 0))
 bar = chouse_bar()
 clear_btn = clear_search()
@@ -143,6 +158,7 @@ while running:
             check_clear = clear_btn.check(pygame.mouse.get_pos())
             if check_clear:
                 pt_y, pt_x = "", ""
+                data = ""
             update()
             screen.blit(pygame.image.load('map.png'), (0, 0))
         if event.type == pygame.KEYDOWN:
@@ -173,6 +189,7 @@ while running:
                 if search:
                     x, y = search
                     pt_x, pt_y = search
+                    data = get_name(address)
                     delta_x, delta_y = set_spn(address)
                     update()
                     screen.blit(pygame.image.load('map.png'), (0, 0))
@@ -183,9 +200,12 @@ while running:
             update()
             screen.blit(pygame.image.load('map.png'), (0, 0))
     pygame.draw.rect(screen, (255, 255, 255), ((0, 420), (300, 30)))
+    pygame.draw.rect(screen, (255, 255, 255), ((200, 0), (400, 30)))
     font = pygame.font.Font(None, 20)
     text = font.render(str(address), 1, (0, 0, 0))
+    text_adress = font.render(str(data), 1, (0, 0, 0))
     screen.blit(text, (0, 430))
+    screen.blit(text_adress, (200, 10))
     bar.draw()
     clear_btn.draw()
     pygame.display.flip()
