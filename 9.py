@@ -271,3 +271,4 @@ while running:
     pygame.display.flip()
 pygame.quit()
 os.remove('map.png')
+
