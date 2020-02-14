@@ -9,6 +9,44 @@ pygame.init()
 screen = pygame.display.set_mode((600, 450))
 
 
+def get_name(address):
+    geocoder_request = f"""http://geocode-maps.yandex.ru/1.x/"""
+    geocoder_params = {
+        'apikey': '40d1649f-0493-4b70-98ba-98533de7710b',
+        'geocode': address,
+        'format': 'json'
+    }
+    response = requests.get(geocoder_request, params=geocoder_params)
+    if response:
+        json_response = response.json()
+        return \
+            json_response['response']['GeoObjectCollection']['featureMember'][
+                0][
+                'GeoObject'][
+                'metaDataProperty']['GeocoderMetaData']['text']
+
+
+def get_index(address):
+    geocoder_request = f"""http://geocode-maps.yandex.ru/1.x/"""
+    geocoder_params = {
+        'apikey': '40d1649f-0493-4b70-98ba-98533de7710b',
+        'geocode': address,
+        'format': 'json'
+    }
+    response = requests.get(geocoder_request, params=geocoder_params)
+    if response:
+        json_response = response.json()
+        try:
+            return \
+                json_response["response"]["GeoObjectCollection"][
+                    "featureMember"][0][
+                    "GeoObject"]["metaDataProperty"]["GeocoderMetaData"][
+                    'Address'][
+                    'postal_code']
+        except:
+            return 'нет индекса'
+
+
 def set_spn(toponym_to_find):
     geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
 
@@ -60,7 +98,22 @@ def load_image(name, colorkey=None):
     return image
 
 
-class chouse_bar:
+class clear_search:
+    def __init__(self):
+        self.x = 0
+        self.y = 0
+        self.image = load_image("clear_search_btn.png")
+
+    def check(self, coor):
+        if coor[1] > 419 and coor[1] < 451 and coor[0] > 569 and coor[1] < 601:
+            return True
+        return False
+
+    def draw(self):
+        screen.blit(self.image, (570, 420))
+
+
+class choose_bar:
     def __init__(self):
         self.x = 0
         self.y = 0
@@ -91,7 +144,8 @@ def update():
         'll': ','.join([str(x), str(y)]),
         'spn': ','.join([str(delta_x), str(delta_y)]),
         'l': l,
-        'pt': ','.join([str(pt_x), str(pt_y)]) + ',pm2blm'
+        'pt': "" if pt_x == "" and pt_y == "" else ','.join(
+            [str(pt_x), str(pt_y)]) + ',pm2blm'
     }
 
     map_response = requests.get(map_request, params=map_params)
@@ -108,12 +162,42 @@ def update():
         file.write(map_response.content)
 
 
+class ChooseIndex:
+    def __init__(self):
+        self.x = 300
+        self.y = 420
+        self.i = 1
+        self.images = [
+            pygame.transform.scale(load_image("off.png", (255, 255, 255)),
+                                   (50, 30)),
+            pygame.transform.scale(load_image("on.png", (255, 255, 255)),
+                                   (50, 30))]
+        self.image = self.images[self.i % 2]
+
+    def check(self, coor):
+        if coor[0] > 300 and coor[0] < 350 and coor[1] > 420 and coor[1] < 450:
+            self.i += 1
+            self.image = self.images[self.i % 2]
+            return True
+        return False
+
+    def draw(self):
+        screen.blit(self.image, (self.x, self.y))
+
+
 x = y = delta_x = delta_y = pt_x = pt_y = 0
 address = ''
+pt_x, pt_y = "", ""
+data = ""
+p_i = ""
 screen.fill((0, 0, 0))
-bar = chouse_bar()
-map = False
+bar = choose_bar()
+postal_index = ChooseIndex()
+postal_bool = True
+clear_btn = clear_search()
 running = True
+update()
+screen.blit(pygame.image.load('map.png'), (0, 0))
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -122,6 +206,14 @@ while running:
             map_r = bar.check(pygame.mouse.get_pos())
             if map_r:
                 l = map_r
+            check_clear = clear_btn.check(pygame.mouse.get_pos())
+            if check_clear:
+                pt_y, pt_x = "", ""
+                data = ""
+                p_i = " "
+            postal_r = postal_index.check(pygame.mouse.get_pos())
+            if postal_r:
+                postal_bool = True if postal_bool == False else False
             update()
             screen.blit(pygame.image.load('map.png'), (0, 0))
         if event.type == pygame.KEYDOWN:
@@ -150,9 +242,10 @@ while running:
             if keys[13]:
                 search = get_coor(address)
                 if search:
-                    map = True
                     x, y = search
                     pt_x, pt_y = search
+                    p_i = get_index(address)
+                    data = get_name(address)
                     delta_x, delta_y = set_spn(address)
                     update()
                     screen.blit(pygame.image.load('map.png'), (0, 0))
@@ -160,15 +253,22 @@ while running:
                 address = address[:-1]
             elif len(address) < 50:
                 address += event.unicode
-            if map:
-                update()
-                screen.blit(pygame.image.load('map.png'), (0, 0))
-
+            update()
+            screen.blit(pygame.image.load('map.png'), (0, 0))
     pygame.draw.rect(screen, (255, 255, 255), ((0, 420), (300, 30)))
+    pygame.draw.rect(screen, (255, 255, 255), ((200, 0), (400, 30)))
+    pygame.draw.rect(screen, (255, 255, 255), ((350, 420), (100, 30)))
     font = pygame.font.Font(None, 20)
     text = font.render(str(address), 1, (0, 0, 0))
+    text_adress = font.render(str(data), 1, (0, 0, 0))
+    text_index = font.render(str(p_i), 1, (0, 0, 0))
     screen.blit(text, (0, 430))
+    screen.blit(text_adress, (200, 10))
+    if postal_bool:
+        screen.blit(text_index, (350, 430))
     bar.draw()
+    postal_index.draw()
+    clear_btn.draw()
     pygame.display.flip()
 pygame.quit()
 os.remove('map.png')
